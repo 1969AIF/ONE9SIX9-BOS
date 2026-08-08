@@ -37,7 +37,11 @@ ONE9SIX9-BOS/
         │   └── sidebar.py
         └── pages/
             ├── base_page.py
-            └── dashboard_page.py
+            ├── dashboard_page.py
+            ├── projects_page.py
+            ├── suppliers_page.py
+            ├── categories_page.py
+            └── expenses_page.py
 ```
 
 ## Features (Foundation)
@@ -50,6 +54,10 @@ ONE9SIX9-BOS/
   - Expenses This Month
   - Net Profit
   - Pending Approvals
+- Project management page (add projects from the Excel workbook)
+- Supplier management page (add suppliers from the Excel workbook)
+- Category management page (add categories from the Excel workbook)
+- Expense management page (add expenses from the Excel workbook, with automatic VAT total calculation)
 
 ## License
 

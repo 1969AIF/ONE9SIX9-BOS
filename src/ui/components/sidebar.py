@@ -12,6 +12,7 @@ NAV_ITEMS: tuple[str, ...] = (
     "Income",
     "Projects",
     "Suppliers",
+    "Categories",
     "Documents",
     "Reports",
     "Administration",

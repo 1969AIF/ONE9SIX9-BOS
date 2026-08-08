@@ -9,6 +9,8 @@ from src.ui.pages.base_page import BasePage
 from src.ui.pages.dashboard_page import DashboardPage
 from src.ui.pages.projects_page import ProjectsPage
 from src.ui.pages.suppliers_page import SuppliersPage
+from src.ui.pages.categories_page import CategoriesPage
+from src.ui.pages.expenses_page import ExpensesPage
 
 
 class MainWindow(ctk.CTk):
@@ -57,6 +59,8 @@ class MainWindow(ctk.CTk):
         self._pages["Dashboard"] = DashboardPage(self._page_container)
         self._pages["Projects"] = ProjectsPage(self._page_container)
         self._pages["Suppliers"] = SuppliersPage(self._page_container)
+        self._pages["Categories"] = CategoriesPage(self._page_container)
+        self._pages["Expenses"] = ExpensesPage(self._page_container)
 
     def _show_page(self, page_name: str) -> None:
         if page_name not in self._pages:

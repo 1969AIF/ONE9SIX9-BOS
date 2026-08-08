@@ -13,9 +13,13 @@ Python/CustomTkinter desktop app. Data is stored in an Excel workbook via openpy
 - `main.py` — entry point; initializes `ExcelService`, sets dark theme, launches `MainWindow`
 - `src/app.py` — `MainWindow` root window: sidebar + header + page container, routes between pages
 - `src/config/theme.py` — `Theme` class with all colors, fonts, sizes (single source of truth; no hardcoded colors elsewhere)
-- `src/services/excel_service.py` — `ExcelService` class managing the workbook (`ONE9SIX9.xlsx`). Worksheets: Dashboard, Expenses, Income, Projects, Suppliers, Categories, Settings. Dataclasses: `Project`, `Supplier`
-- `src/ui/components/` — `Header`, `Sidebar`, `NewProjectDialog`, `NewSupplierDialog`, `DashboardCard`
-- `src/ui/pages/` — `BasePage`, `DashboardPage`, `ProjectsPage`, `SuppliersPage` (each page has `refresh()`)
+- `src/services/excel_service.py` — `ExcelService` class managing the workbook (`ONE9SIX9.xlsx`). Worksheets: Dashboard, Expenses, Income, Projects, Suppliers, Categories, Settings. Dataclasses: `Project`, `Supplier`, `Category`, `Expense`
+- `src/ui/components/` — `Header`, `Sidebar`, `NewProjectDialog`, `NewSupplierDialog`, `NewCategoryDialog`, `NewExpenseDialog`, `DashboardCard`
+- `src/ui/pages/` — `BasePage`, `DashboardPage`, `ProjectsPage`, `SuppliersPage`, `CategoriesPage`, `ExpensesPage` (each page has `refresh()`)
+
+## Notes
+
+- The test suite (`tests/test_bugfixes.py`) backs up `ONE9SIX9.xlsx` before running and restores it afterwards, so the real workbook is never polluted with test data.
 
 ## Conventions
 

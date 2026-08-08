@@ -8,6 +8,10 @@ from pathlib import Path
 from src.app import MainWindow
 from src.services.excel_service import ExcelService
 from src.ui.components.new_project_dialog import NewProjectDialog
+from src.ui.components.new_expense_dialog import (
+    NewExpenseDialog,
+    PLACEHOLDER_PROJECT,
+)
 
 
 def test_startup_opens_dashboard() -> None:
@@ -43,6 +47,101 @@ def test_save_project_persists() -> None:
     assert any(p.project_code == code and p.project_name == name for p in projects)
 
     print("PASS: project save persists across reload")
+
+
+def test_save_category_persists() -> None:
+    project_root = Path(__file__).resolve().parent.parent
+    ExcelService.initialize(project_root)
+
+    code = "TEST-CAT-001"
+    name = "Bugfix Verification Category"
+
+    ExcelService.add_category(code, name)
+    ExcelService._workbook = None
+    ExcelService.initialize(project_root)
+
+    categories = ExcelService.get_categories()
+    assert any(
+        c.category_code == code and c.category_name == name for c in categories
+    )
+
+    print("PASS: category save persists across reload")
+
+
+def test_save_expense_persists() -> None:
+    project_root = Path(__file__).resolve().parent.parent
+    ExcelService.initialize(project_root)
+
+    code = "TEST-EXP-PROJ"
+    if not any(p.project_code == code for p in ExcelService.get_projects()):
+        ExcelService.add_project(code, "Expense Test Project", "Active")
+
+    ExcelService.add_expense(
+        date="01/08/2026",
+        supplier="Test Supplier",
+        project="TEST-EXP-PROJ",
+        category="Test Category",
+        invoice_number="INV-001",
+        description="Test expense",
+        amount_ex_vat=100.0,
+        vat=20.0,
+        total=120.0,
+    )
+    ExcelService._workbook = None
+    ExcelService.initialize(project_root)
+
+    expenses = ExcelService.get_expenses()
+    assert any(
+        e.project == "TEST-EXP-PROJ"
+        and e.description == "Test expense"
+        and float(e.total) == 120.0
+        for e in expenses
+    )
+
+    print("PASS: expense save persists across reload")
+
+
+def test_expense_requires_project() -> None:
+    ctk.set_appearance_mode("dark")
+
+    project_root = Path(__file__).resolve().parent.parent
+    ExcelService.initialize(project_root)
+
+    code = "TEST-EXP-PROJ"
+    if not any(p.project_code == code for p in ExcelService.get_projects()):
+        ExcelService.add_project(code, "Expense Test Project", "Active")
+
+    saved: list[tuple[object, ...]] = []
+
+    root = ctk.CTk()
+    root.withdraw()
+
+    dialog = NewExpenseDialog(
+        root,
+        on_save=lambda *args: saved.append(args),
+    )
+    root.update()
+
+    dialog._date_entry.insert(0, "02/08/2026")
+    dialog._amount_entry.insert(0, "100")
+    assert dialog._project_menu.get() == PLACEHOLDER_PROJECT
+
+    dialog._handle_save()
+    root.update()
+
+    assert not saved
+    assert dialog.winfo_exists()
+    assert "select a project" in dialog._error_label.cget("text").lower()
+
+    dialog._project_menu.set(f"{code} — Expense Test Project")
+    dialog._handle_save()
+    root.update()
+
+    assert not dialog.winfo_exists()
+    assert len(saved) == 1
+
+    root.destroy()
+    print("PASS: expense cannot be saved without a project")
 
 
 def test_dialog_validation_and_cancel() -> None:
@@ -100,10 +199,24 @@ def test_dialog_validation_and_cancel() -> None:
 
 
 if __name__ == "__main__":
-    project_root = Path(__file__).resolve().parent.parent
-    ExcelService.initialize(project_root)
+    import shutil
 
-    test_startup_opens_dashboard()
-    test_save_project_persists()
-    test_dialog_validation_and_cancel()
-    print("All tests passed.")
+    project_root = Path(__file__).resolve().parent.parent
+    workbook_path = project_root / "ONE9SIX9.xlsx"
+    backup_path = project_root / "ONE9SIX9.test-backup.xlsx"
+    shutil.copy2(workbook_path, backup_path)
+
+    try:
+        ExcelService.initialize(project_root)
+
+        test_startup_opens_dashboard()
+        test_save_project_persists()
+        test_save_category_persists()
+        test_save_expense_persists()
+        test_expense_requires_project()
+        test_dialog_validation_and_cancel()
+        print("All tests passed.")
+    finally:
+        shutil.copy2(backup_path, workbook_path)
+        backup_path.unlink()
+        ExcelService._workbook = None

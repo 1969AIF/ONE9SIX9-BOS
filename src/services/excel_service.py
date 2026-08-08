@@ -13,10 +13,14 @@ WORKSHEET_HEADERS: dict[str, list[str]] = {
     "Expenses": [
         "ID",
         "Date",
-        "Description",
-        "Category",
         "Supplier",
-        "Amount",
+        "Project",
+        "Category",
+        "Invoice/Receipt Number",
+        "Description",
+        "Amount Excl. VAT",
+        "VAT",
+        "Total Incl. VAT",
         "Status",
         "Notes",
     ],
@@ -50,7 +54,7 @@ WORKSHEET_HEADERS: dict[str, list[str]] = {
         "Category",
         "Notes",
     ],
-    "Categories": ["ID", "Name", "Type", "Description"],
+    "Categories": ["Category Code", "Category Name", "Type", "Description"],
     "Settings": ["Key", "Value", "Description"],
 }
 
@@ -63,6 +67,26 @@ SUPPLIER_VAT_HEADER = "VAT Number"
 SUPPLIER_CONTACT_HEADERS = ("Contact Person",)
 SUPPLIER_TELEPHONE_HEADERS = ("Telephone", "Phone")
 SUPPLIER_EMAIL_HEADERS = ("Email",)
+
+CATEGORY_CODE_HEADERS = ("Category Code", "Code", "ID")
+CATEGORY_NAME_HEADERS = ("Category Name", "Name")
+
+EXPENSE_ID_HEADERS = ("ID",)
+EXPENSE_DATE_HEADERS = ("Date",)
+EXPENSE_SUPPLIER_HEADERS = ("Supplier", "Supplier Name")
+EXPENSE_PROJECT_HEADERS = ("Project",)
+EXPENSE_CATEGORY_HEADERS = ("Category",)
+EXPENSE_INVOICE_HEADERS = (
+    "Invoice/Receipt Number",
+    "Invoice Number",
+    "Receipt Number",
+    "Invoice",
+    "Receipt",
+)
+EXPENSE_DESCRIPTION_HEADERS = ("Description",)
+EXPENSE_AMOUNT_HEADERS = ("Amount Excl. VAT", "Amount", "Amount Excluding VAT")
+EXPENSE_VAT_HEADERS = ("VAT",)
+EXPENSE_TOTAL_HEADERS = ("Total Incl. VAT", "Total", "Total Including VAT")
 
 
 @dataclass
@@ -83,6 +107,29 @@ class Supplier:
     contact_person: str
     telephone: str
     email: str
+
+
+@dataclass
+class Category:
+    """A category record from the Categories worksheet."""
+
+    category_code: str
+    category_name: str
+
+
+@dataclass
+class Expense:
+    """An expense record from the Expenses worksheet."""
+
+    date: str
+    supplier: str
+    project: str
+    category: str
+    invoice_number: str
+    description: str
+    amount_ex_vat: str
+    vat: str
+    total: str
 
 
 class ExcelService:
@@ -219,6 +266,157 @@ class ExcelService:
         sheet.cell(row=next_row, column=column_map["email"], value=email)
 
         cls.save()
+
+    @classmethod
+    def get_categories(cls) -> list[Category]:
+        """Return all categories from the Categories worksheet."""
+        sheet = cls._get_categories_sheet()
+        column_map = cls._get_category_column_map(sheet)
+
+        categories: list[Category] = []
+        for row in range(2, sheet.max_row + 1):
+            category_code = cls._cell_value(sheet, row, column_map["code"])
+            category_name = cls._cell_value(sheet, row, column_map["name"])
+
+            if not category_code and not category_name:
+                continue
+
+            categories.append(
+                Category(
+                    category_code=category_code,
+                    category_name=category_name,
+                )
+            )
+
+        return categories
+
+    @classmethod
+    def add_category(
+        cls,
+        category_code: str,
+        category_name: str,
+    ) -> None:
+        """Append a new category row and save the workbook."""
+        sheet = cls._get_categories_sheet()
+        column_map = cls._get_category_column_map(sheet)
+        next_row = sheet.max_row + 1
+
+        sheet.cell(row=next_row, column=column_map["code"], value=category_code)
+        sheet.cell(row=next_row, column=column_map["name"], value=category_name)
+
+        cls.save()
+
+    @classmethod
+    def _get_categories_sheet(cls) -> Worksheet:
+        return cls.get_workbook()["Categories"]
+
+    @classmethod
+    def _get_category_column_map(cls, sheet: Worksheet) -> dict[str, int]:
+        headers = [str(cell.value) if cell.value is not None else "" for cell in sheet[1]]
+
+        return {
+            "code": cls._find_column(headers, CATEGORY_CODE_HEADERS),
+            "name": cls._find_column(headers, CATEGORY_NAME_HEADERS),
+        }
+
+    @classmethod
+    def get_expenses(cls) -> list[Expense]:
+        """Return all expenses from the Expenses worksheet."""
+        sheet = cls._get_expenses_sheet()
+        column_map = cls._get_expense_column_map(sheet)
+
+        expenses: list[Expense] = []
+        for row in range(2, sheet.max_row + 1):
+            date = cls._cell_value(sheet, row, column_map["date"])
+            supplier = cls._cell_value(sheet, row, column_map["supplier"])
+            project = cls._cell_value(sheet, row, column_map["project"])
+            category = cls._cell_value(sheet, row, column_map["category"])
+            invoice_number = cls._cell_value(sheet, row, column_map["invoice"])
+            description = cls._cell_value(sheet, row, column_map["description"])
+            amount = cls._cell_value(sheet, row, column_map["amount"])
+            vat = cls._cell_value(sheet, row, column_map["vat"])
+            total = cls._cell_value(sheet, row, column_map["total"])
+
+            if not date and not supplier and not project and not description:
+                continue
+
+            expenses.append(
+                Expense(
+                    date=date,
+                    supplier=supplier,
+                    project=project,
+                    category=category,
+                    invoice_number=invoice_number,
+                    description=description,
+                    amount_ex_vat=amount,
+                    vat=vat,
+                    total=total,
+                )
+            )
+
+        return expenses
+
+    @classmethod
+    def add_expense(
+        cls,
+        *,
+        date: str,
+        supplier: str,
+        project: str,
+        category: str,
+        invoice_number: str,
+        description: str,
+        amount_ex_vat: float,
+        vat: float,
+        total: float,
+    ) -> None:
+        """Append a new expense row and save the workbook."""
+        sheet = cls._get_expenses_sheet()
+        column_map = cls._get_expense_column_map(sheet)
+        next_row = sheet.max_row + 1
+
+        sheet.cell(row=next_row, column=column_map["id"], value=cls._next_expense_id(sheet, column_map))
+        sheet.cell(row=next_row, column=column_map["date"], value=date)
+        sheet.cell(row=next_row, column=column_map["supplier"], value=supplier)
+        sheet.cell(row=next_row, column=column_map["project"], value=project)
+        sheet.cell(row=next_row, column=column_map["category"], value=category)
+        sheet.cell(row=next_row, column=column_map["invoice"], value=invoice_number)
+        sheet.cell(row=next_row, column=column_map["description"], value=description)
+        sheet.cell(row=next_row, column=column_map["amount"], value=amount_ex_vat)
+        sheet.cell(row=next_row, column=column_map["vat"], value=vat)
+        sheet.cell(row=next_row, column=column_map["total"], value=total)
+
+        cls.save()
+
+    @classmethod
+    def _get_expenses_sheet(cls) -> Worksheet:
+        return cls.get_workbook()["Expenses"]
+
+    @classmethod
+    def _get_expense_column_map(cls, sheet: Worksheet) -> dict[str, int]:
+        headers = [str(cell.value) if cell.value is not None else "" for cell in sheet[1]]
+
+        return {
+            "id": cls._find_column(headers, EXPENSE_ID_HEADERS),
+            "date": cls._find_column(headers, EXPENSE_DATE_HEADERS),
+            "supplier": cls._find_column(headers, EXPENSE_SUPPLIER_HEADERS),
+            "project": cls._find_column(headers, EXPENSE_PROJECT_HEADERS),
+            "category": cls._find_column(headers, EXPENSE_CATEGORY_HEADERS),
+            "invoice": cls._find_column(headers, EXPENSE_INVOICE_HEADERS),
+            "description": cls._find_column(headers, EXPENSE_DESCRIPTION_HEADERS),
+            "amount": cls._find_column(headers, EXPENSE_AMOUNT_HEADERS),
+            "vat": cls._find_column(headers, EXPENSE_VAT_HEADERS),
+            "total": cls._find_column(headers, EXPENSE_TOTAL_HEADERS),
+        }
+
+    @classmethod
+    def _next_expense_id(cls, sheet: Worksheet, column_map: dict[str, int]) -> int:
+        max_id = 0
+        for row in range(2, sheet.max_row + 1):
+            value = sheet.cell(row=row, column=column_map["id"]).value
+            if isinstance(value, (int, float)):
+                max_id = max(max_id, int(value))
+        return max_id + 1
 
     @classmethod
     def _get_projects_sheet(cls) -> Worksheet:
