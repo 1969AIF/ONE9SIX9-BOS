@@ -49,10 +49,10 @@ ONE9SIX9-BOS/
 - Modern dark theme UI
 - Left navigation panel with eight sections
 - Top header with application name and today's date
-- Dashboard page with placeholder metric cards:
+- Dashboard page with live metric cards (refreshes when opened):
   - Income This Month
-  - Expenses This Month
-  - Net Profit
+  - Expenses This Month (total of expenses recorded this month)
+  - Net Profit (income minus expenses)
   - Pending Approvals
 - Project management page (add projects from the Excel workbook)
 - Supplier management page (add suppliers from the Excel workbook)

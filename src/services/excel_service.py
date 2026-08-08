@@ -1,6 +1,7 @@
 """Excel workbook management for ONE9SIX9 BOS."""
 
 from dataclasses import dataclass
+from datetime import date, datetime
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
@@ -130,6 +131,16 @@ class Expense:
     amount_ex_vat: str
     vat: str
     total: str
+
+
+@dataclass
+class DashboardSummary:
+    """Summary totals for the dashboard cards."""
+
+    income_total: float
+    expenses_total: float
+    expenses_count: int
+    pending_approvals: int
 
 
 class ExcelService:
@@ -417,6 +428,62 @@ class ExcelService:
             if isinstance(value, (int, float)):
                 max_id = max(max_id, int(value))
         return max_id + 1
+
+    @classmethod
+    def get_dashboard_summary(cls) -> DashboardSummary:
+        """Return monthly totals for the dashboard cards."""
+        today = date.today()
+
+        expenses_total = 0.0
+        expenses_count = 0
+        for expense in cls.get_expenses():
+            parsed = cls._parse_date(expense.date)
+            if (
+                parsed is not None
+                and parsed.year == today.year
+                and parsed.month == today.month
+            ):
+                expenses_total += cls._parse_amount(expense.total)
+                expenses_count += 1
+
+        return DashboardSummary(
+            income_total=0.0,
+            expenses_total=round(expenses_total, 2),
+            expenses_count=expenses_count,
+            pending_approvals=0,
+        )
+
+    _DATE_FORMATS: tuple[tuple[str, bool], ...] = (
+        ("%d/%m/%Y", True),
+        ("%d-%m-%Y", True),
+        ("%d/%m/%y", True),
+        ("%Y-%m-%d", True),
+        ("%Y-%m-%d %H:%M:%S", True),
+        ("%d %B %Y", True),
+        ("%d %b %Y", True),
+        ("%B %d, %Y", True),
+        ("%d %B", False),
+        ("%d %b", False),
+    )
+
+    @classmethod
+    def _parse_date(cls, value: str) -> date | None:
+        for fmt, has_year in cls._DATE_FORMATS:
+            try:
+                parsed = datetime.strptime(value.strip(), fmt)
+            except ValueError:
+                continue
+            if not has_year:
+                parsed = parsed.replace(year=date.today().year)
+            return parsed.date()
+        return None
+
+    @staticmethod
+    def _parse_amount(value: str) -> float:
+        try:
+            return float(value)
+        except ValueError:
+            return 0.0
 
     @classmethod
     def _get_projects_sheet(cls) -> Worksheet:

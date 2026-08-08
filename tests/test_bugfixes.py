@@ -144,6 +144,56 @@ def test_expense_requires_project() -> None:
     print("PASS: expense cannot be saved without a project")
 
 
+def test_dashboard_summary_counts_current_month() -> None:
+    from datetime import date
+
+    project_root = Path(__file__).resolve().parent.parent
+    ExcelService.initialize(project_root)
+
+    code = "TEST-EXP-PROJ"
+    if not any(p.project_code == code for p in ExcelService.get_projects()):
+        ExcelService.add_project(code, "Expense Test Project", "Active")
+
+    baseline = ExcelService.get_dashboard_summary()
+
+    today = date.today()
+    if today.month == 1:
+        last_month = date(today.year - 1, 12, min(today.day, 28))
+    else:
+        last_month = date(today.year, today.month - 1, min(today.day, 28))
+
+    ExcelService.add_expense(
+        date=today.strftime("%d/%m/%Y"),
+        supplier="Test Supplier",
+        project=code,
+        category="",
+        invoice_number="",
+        description="current month",
+        amount_ex_vat=100.0,
+        vat=20.0,
+        total=120.0,
+    )
+    ExcelService.add_expense(
+        date=last_month.strftime("%d/%m/%Y"),
+        supplier="Test Supplier",
+        project=code,
+        category="",
+        invoice_number="",
+        description="previous month",
+        amount_ex_vat=50.0,
+        vat=10.0,
+        total=60.0,
+    )
+
+    summary = ExcelService.get_dashboard_summary()
+    assert summary.expenses_count == baseline.expenses_count + 1
+    assert summary.expenses_total == baseline.expenses_total + 120.0
+    assert summary.income_total == 0.0
+    assert summary.pending_approvals == 0
+
+    print("PASS: dashboard summary counts only the current month")
+
+
 def test_dialog_validation_and_cancel() -> None:
     ctk.set_appearance_mode("dark")
 
@@ -214,6 +264,7 @@ if __name__ == "__main__":
         test_save_category_persists()
         test_save_expense_persists()
         test_expense_requires_project()
+        test_dashboard_summary_counts_current_month()
         test_dialog_validation_and_cancel()
         print("All tests passed.")
     finally:
